@@ -18,6 +18,8 @@
 
         android:enableOnBackInvokedCallback="true">
 
+        <service android:name=".utils.TimerService" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

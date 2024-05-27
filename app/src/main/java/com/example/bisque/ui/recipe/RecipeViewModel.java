@@ -9,12 +9,14 @@ import com.example.bisque.MyApp;
 import com.example.bisque.db.AppDatabase;
 import com.example.bisque.db.Recipe;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class RecipeViewModel extends AndroidViewModel {
-
     private final MutableLiveData<Recipe> selectedRecipe = new MutableLiveData<>();
+    private final MutableLiveData<Map<Integer, Integer>> timers = new MutableLiveData<>(new HashMap<>());
     private final AppDatabase database;
     private final ExecutorService executorService;
 
@@ -33,5 +35,17 @@ public class RecipeViewModel extends AndroidViewModel {
 
     public LiveData<Recipe> getSelectedRecipe() {
         return selectedRecipe;
+    }
+
+    public LiveData<Map<Integer, Integer>> getTimers() {
+        return timers;
+    }
+
+    public void updateTimer(int position, int remainingSeconds) {
+        Map<Integer, Integer> currentTimers = timers.getValue();
+        if (currentTimers != null) {
+            currentTimers.put(position, remainingSeconds);
+            timers.postValue(currentTimers);
+        }
     }
 }

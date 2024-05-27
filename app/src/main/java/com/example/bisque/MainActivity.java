@@ -13,7 +13,6 @@ import androidx.navigation.ui.NavigationUI;
 import com.example.bisque.databinding.ActivityMainBinding;
 
 public class MainActivity extends AppCompatActivity {
-
     private ActivityMainBinding binding;
 
     @Override
@@ -30,5 +29,13 @@ public class MainActivity extends AppCompatActivity {
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
         NavigationUI.setupWithNavController(binding.navView, navController);
+    }
+
+    @Override
+    public void onBackPressed() {
+        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_activity_main);
+        if (!navController.popBackStack()) {
+            super.onBackPressed();
+        }
     }
 }
