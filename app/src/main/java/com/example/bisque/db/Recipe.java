@@ -15,6 +15,7 @@ public class Recipe {
     private int id;
     private String title;
     private String preview;
+    private String category;
     private String description;
     private List<String> ingredients;
     private List<Step> steps;
@@ -40,9 +41,10 @@ public class Recipe {
     }
 
     // Constructor
-    public Recipe(String title, String preview, String description, List<String> ingredients, List<Step> steps) {
+    public Recipe(String title, String preview, String category, String description, List<String> ingredients, List<Step> steps) {
         this.title = title;
         this.preview = preview;
+        this.category = category;
         this.description = description;
         this.ingredients = ingredients;
         this.steps = steps;
@@ -57,6 +59,9 @@ public class Recipe {
 
     public String getPreview() { return preview; }
     public void setPreview(String preview) { this.preview = preview; }
+
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }

@@ -1,5 +1,7 @@
-package com.example.bisque.rv.recipe;
+package com.example.bisque.ui.recipe;
 
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
@@ -11,16 +13,17 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.lifecycle.LifecycleOwner;
+import androidx.core.app.NotificationCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.example.bisque.MyApp;
 import com.example.bisque.R;
 import com.example.bisque.db.Recipe;
-import com.example.bisque.ui.recipe.RecipeViewModel;
-import com.example.bisque.utils.TimerService;
+import com.example.bisque.ui.graph.GraphView;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,16 +39,13 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     private static final int VIEW_TYPE_WARNING = 3;
     private static final int VIEW_TYPE_IMAGE = 4;
     private static final int VIEW_TYPE_TIMER = 5;
+    private static final int VIEW_TYPE_GRAPH = 6;
 
     private final Recipe recipe;
     private final List<Object> items;
-    private final TimerService timerService;
-    private final RecipeViewModel recipeViewModel;
 
-    public RecipeAdapter(Recipe recipe, TimerService timerService, RecipeViewModel recipeViewModel) {
+    public RecipeAdapter(Recipe recipe) {
         this.recipe = recipe;
-        this.timerService = timerService;
-        this.recipeViewModel = recipeViewModel;
         this.items = new ArrayList<>();
         prepareItems();
     }
@@ -56,6 +56,9 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
 
         // Add ingredients
         items.addAll(recipe.getIngredients());
+
+        // Add graph placeholder
+        items.add(new Object()); // Placeholder for the graph
 
         // Add steps with possible additional items (warning, image, timer)
         for (Recipe.Step step : recipe.getSteps()) {
@@ -89,6 +92,8 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             return VIEW_TYPE_IMAGE;
         } else if (item instanceof StepTimer) {
             return VIEW_TYPE_TIMER;
+        } else if (item instanceof Object) {
+            return VIEW_TYPE_GRAPH;
         } else {
             throw new IllegalArgumentException("Invalid view type");
         }
@@ -117,7 +122,10 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                 return new ImageViewHolder(view);
             case VIEW_TYPE_TIMER:
                 view = inflater.inflate(R.layout.item_recipe_timer, parent, false);
-                return new TimerViewHolder(view, timerService, recipeViewModel);
+                return new TimerViewHolder(view);
+            case VIEW_TYPE_GRAPH:
+                view = inflater.inflate(R.layout.item_graph_view, parent, false);
+                return new GraphViewHolder(view);
             default:
                 throw new IllegalArgumentException("Invalid view type");
         }
@@ -141,7 +149,9 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             ((ImageViewHolder) holder).bind(stepImage.imageUrl);
         } else if (holder instanceof TimerViewHolder) {
             StepTimer stepTimer = (StepTimer) item;
-            ((TimerViewHolder) holder).bind(position, stepTimer.stepDuration);
+            ((TimerViewHolder) holder).bind(stepTimer.stepDuration);
+        } else if (holder instanceof GraphViewHolder) {
+            ((GraphViewHolder) holder).bind(recipe);
         }
     }
 
@@ -267,87 +277,108 @@ public class RecipeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         }
     }
 
-    public class TimerViewHolder extends RecyclerView.ViewHolder {
+    static class TimerViewHolder extends RecyclerView.ViewHolder {
         private final TextView timerText;
         private final Button startButton;
         private final Button pauseButton;
         private final Button stopButton;
 
-        private TimerService timerService;
-        private Handler handler = new Handler(Looper.getMainLooper());
-        private RecipeViewModel recipeViewModel;
-        private int position;
+        private Handler handler;
+        private Runnable runnable;
+        private int initSeconds;
+        private int seconds;
+        private boolean isRunning;
 
-        public TimerViewHolder(@NonNull View itemView, TimerService timerService, RecipeViewModel recipeViewModel) {
+        public TimerViewHolder(@NonNull View itemView) {
             super(itemView);
-            this.timerService = timerService;
-            this.recipeViewModel = recipeViewModel;
             timerText = itemView.findViewById(R.id.text_timer);
             startButton = itemView.findViewById(R.id.button_start);
             pauseButton = itemView.findViewById(R.id.button_pause);
             stopButton = itemView.findViewById(R.id.button_stop);
+            handler = new Handler(Looper.getMainLooper());
+        }
+
+        public void bind(int stepDuration) {
+            initSeconds = seconds = stepDuration * 60; // Convert minutes to seconds
+            updateTimerText();
 
             startButton.setOnClickListener(v -> startTimer());
             pauseButton.setOnClickListener(v -> pauseTimer());
             stopButton.setOnClickListener(v -> stopTimer());
         }
 
-        public void bind(int position, int stepDuration) {
-            this.position = position;
-
-            // Set initial timer duration
-            recipeViewModel.updateTimer(position, stepDuration * 60); // stepDuration is in minutes, convert to seconds
-
-            // Observe the remaining time for this timer instance
-            recipeViewModel.getTimers().observe((LifecycleOwner) itemView.getContext(), timers -> {
-                Integer remainingTime = timers.get(position);
-                updateTimerText(remainingTime != null ? remainingTime : stepDuration * 60);
-            });
-        }
-
         private void startTimer() {
-            if (timerService != null) {
-                timerService.startTimer(String.valueOf(position), recipeViewModel.getTimers().getValue().get(position));
-                updateTimerUI();
+            if (!isRunning) {
+                runnable = new Runnable() {
+                    @Override
+                    public void run() {
+                        if (seconds > 0) {
+                            seconds--;
+                            updateTimerText();
+                            handler.postDelayed(this, 1000);
+                        } else {
+                            handler.removeCallbacks(runnable);
+                            triggerNotificationAndToast();
+                        }
+                    }
+                };
+                handler.post(runnable);
+                isRunning = true;
             }
         }
 
         private void pauseTimer() {
-            if (timerService != null) {
-                timerService.pauseTimer(String.valueOf(position));
+            if (isRunning) {
+                handler.removeCallbacks(runnable);
+                isRunning = false;
             }
         }
 
         private void stopTimer() {
-            if (timerService != null) {
-                timerService.stopTimer(String.valueOf(position));
-                handler.removeCallbacksAndMessages(null);
-                updateTimerText(0);
-            }
+            handler.removeCallbacks(runnable);
+            seconds = initSeconds;
+            updateTimerText();
+            isRunning = false;
         }
 
-        private void updateTimerUI() {
-            handler.post(new Runnable() {
-                @Override
-                public void run() {
-                    if (timerService != null) {
-                        int remainingSeconds = timerService.getRemainingSeconds(String.valueOf(position));
-                        recipeViewModel.updateTimer(position, remainingSeconds);
-                        if (remainingSeconds > 0) {
-                            handler.postDelayed(this, 1000);
-                        }
-                    }
-                }
-            });
-        }
-
-        private void updateTimerText(Integer seconds) {
-            if (seconds == null) {
-                seconds = 0;
-            }
+        private void updateTimerText() {
             int minutes = seconds / 60;
             int secs = seconds % 60;
             timerText.setText(String.format("%02d:%02d", minutes, secs));
+        }
+
+        private void triggerNotificationAndToast() {
+            Context context = itemView.getContext();
+            NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+
+            Notification notification = new NotificationCompat.Builder(context, MyApp.CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_notifications_timer_24dp) // Replace with your own icon
+                    .setContentTitle("Timer Finished")
+                    .setContentText("Ding! Ding! Step's done, onto the next one!")
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setCategory(NotificationCompat.CATEGORY_ALARM)
+                    .build();
+
+            if (notificationManager != null) {
+                notificationManager.notify(getAdapterPosition(), notification);
+            }
+
+            // Toast message
+            Toast.makeText(context, "Ding! Ding! Step's done, onto the next one!",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    static class GraphViewHolder extends RecyclerView.ViewHolder {
+        private final GraphView graphView;
+
+        public GraphViewHolder(@NonNull View itemView) {
+            super(itemView);
+            graphView = itemView.findViewById(R.id.graph_view);
+        }
+
+        public void bind(Recipe recipe) {
+            graphView.setSteps(recipe.getSteps());
         }
     }
 

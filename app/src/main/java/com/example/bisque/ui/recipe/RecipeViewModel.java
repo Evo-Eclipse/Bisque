@@ -36,16 +36,5 @@ public class RecipeViewModel extends AndroidViewModel {
     public LiveData<Recipe> getSelectedRecipe() {
         return selectedRecipe;
     }
-
-    public LiveData<Map<Integer, Integer>> getTimers() {
-        return timers;
-    }
-
-    public void updateTimer(int position, int remainingSeconds) {
-        Map<Integer, Integer> currentTimers = timers.getValue();
-        if (currentTimers != null) {
-            currentTimers.put(position, remainingSeconds);
-            timers.postValue(currentTimers);
-        }
-    }
 }
+

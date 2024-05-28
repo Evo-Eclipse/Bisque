@@ -4,18 +4,21 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.NavOptions;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.bisque.R;
 import com.example.bisque.databinding.FragmentHomeBinding;
 import com.example.bisque.db.Recipe;
-import com.example.bisque.rv.home.HomeAdapter;
 import com.example.bisque.ui.recipe.RecipeViewModel;
 
 public class HomeFragment extends Fragment {
@@ -23,39 +26,53 @@ public class HomeFragment extends Fragment {
     private FragmentHomeBinding binding;
     private RecipeViewModel recipeViewModel;
 
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             ViewGroup container, Bundle savedInstanceState) {
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         HomeViewModel homeViewModel = new ViewModelProvider(this).get(HomeViewModel.class);
         recipeViewModel = new ViewModelProvider(requireActivity()).get(RecipeViewModel.class);
 
         binding = FragmentHomeBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
 
-//        final TextView textView = binding.textHome;
-//        homeViewModel.getText().observe(getViewLifecycleOwner(), textView::setText);
-//        return root;
-
-        // Home RecyclerView
         RecyclerView recyclerView = binding.rvHome;
         recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 2));
-        HomeAdapter homeAdapter = new HomeAdapter(new HomeAdapter.OnItemClickListener() {
-            @Override
-            public void onItemClick(Recipe recipe) {
-                // In honored path to GraphFragment
-                recipeViewModel.setSelectedRecipeId(recipe.getId());
+        HomeAdapter homeAdapter = new HomeAdapter(recipe -> {
+            recipeViewModel.setSelectedRecipeId(recipe.getId());
 
-                Bundle bundle = new Bundle();
-                bundle.putInt("recipeId", recipe.getId());
-                Navigation.findNavController(root).navigate(
-                        com.example.bisque.R.id.action_navigation_home_to_recipeFragment,
-                        bundle
-                );
-            }
+            Bundle bundle = new Bundle();
+            bundle.putInt("recipeId", recipe.getId());
+
+            NavOptions navOptions = new NavOptions.Builder()
+                    .setPopUpTo(R.id.navigation_home, false)
+                    .build();
+
+            Navigation.findNavController(root).navigate(
+                    R.id.action_navigation_home_to_recipeFragment,
+                    bundle,
+                    navOptions
+            );
         });
         recyclerView.setAdapter(homeAdapter);
 
-        homeViewModel.getRecipes().observe(getViewLifecycleOwner(), recipes -> {
-            homeAdapter.setRecipes(recipes);
+        // Setup category spinner
+        Spinner categorySpinner = binding.categorySpinner;
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(getContext(),
+                R.array.categories_array, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        categorySpinner.setAdapter(adapter);
+
+        // Load recipes based on selected category
+        categorySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String selectedCategory = parent.getItemAtPosition(position).toString();
+                homeViewModel.loadRecipesByCategory(selectedCategory).observe(getViewLifecycleOwner(), homeAdapter::setRecipes);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                homeViewModel.getRecipes().observe(getViewLifecycleOwner(), homeAdapter::setRecipes);
+            }
         });
 
         return root;
@@ -67,3 +84,5 @@ public class HomeFragment extends Fragment {
         binding = null;
     }
 }
+
+//

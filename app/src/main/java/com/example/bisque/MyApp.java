@@ -7,6 +7,8 @@ import android.app.NotificationManager;
 import androidx.room.Room;
 
 import com.example.bisque.db.AppDatabase;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 public class MyApp extends Application {
 
@@ -16,6 +18,8 @@ public class MyApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        FirebaseApp.initializeApp(this);
+        FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true);
         database = AppDatabase.getInstance(this);
         createNotificationChannel();
     }
@@ -30,9 +34,10 @@ public class MyApp extends Application {
                 "Timer Channel",
                 NotificationManager.IMPORTANCE_HIGH
         );
-        channel.setDescription("Channel for timer settings");
+        channel.setDescription("Channel for timer notifications");
 
         NotificationManager manager = getSystemService(NotificationManager.class);
         manager.createNotificationChannel(channel);
     }
 }
+//

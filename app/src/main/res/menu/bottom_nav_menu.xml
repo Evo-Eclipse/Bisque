@@ -7,11 +7,6 @@
         android:title="@string/title_home" />
 
     <item
-        android:id="@+id/navigation_graph"
-        android:icon="@drawable/ic_dashboard_black_24dp"
-        android:title="@string/title_graph" />
-
-    <item
         android:id="@+id/navigation_settings"
         android:icon="@drawable/ic_settings_24dp"
         android:title="@string/title_settings" />

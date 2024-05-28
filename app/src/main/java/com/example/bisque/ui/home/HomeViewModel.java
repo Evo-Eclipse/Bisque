@@ -17,28 +17,32 @@ import java.util.concurrent.Executors;
 
 public class HomeViewModel extends AndroidViewModel {
 
-//    private final MutableLiveData<String> mText;
     private MutableLiveData<List<Recipe>> recipes = new MutableLiveData<>();
     private final AppDatabase database;
     private final ExecutorService executorService;
 
-
     public HomeViewModel(Application application) {
         super(application);
-
-//        mText = new MutableLiveData<>();
-//        mText.setValue("This is home fragment");
 
         database = MyApp.getDatabase();
         executorService = Executors.newSingleThreadExecutor();
         loadRecipes();
     }
 
-//    public LiveData<String> getText() {
-//        return mText;
-//    }
-
     public LiveData<List<Recipe>> getRecipes() {
+        return recipes;
+    }
+
+    public LiveData<List<Recipe>> loadRecipesByCategory(String category) {
+        executorService.execute(() -> {
+            List<Recipe> recipeList;
+            if (category.equals("All")) {
+                recipeList = database.recipeDao().getAllRecipes();
+            } else {
+                recipeList = database.recipeDao().getRecipesByCategory(category);
+            }
+            recipes.postValue(recipeList);
+        });
         return recipes;
     }
 

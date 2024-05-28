@@ -1,4 +1,4 @@
-package com.example.bisque.rv.home;
+package com.example.bisque.ui.home;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;

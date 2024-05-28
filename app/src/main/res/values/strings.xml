@@ -8,5 +8,15 @@
     <string name="timer_pause">Pause</string>
     <string name="timer_stop">Stop</string>
 
+    <string-array name="categories_array">
+        <item>All</item>
+        <item>Breakfast</item>
+        <item>Lunch</item>
+        <item>Dinner</item>
+        <item>Desserts</item>
+        <item>Drinks</item>
+        <item>Extra</item>
+    </string-array>
+
     <string name="graph">:3</string>
 </resources>
