@@ -1,6 +1,7 @@
 package com.example.bisque.ui.recipe;
 
 import android.app.Application;
+
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
@@ -36,5 +37,8 @@ public class RecipeViewModel extends AndroidViewModel {
     public LiveData<Recipe> getSelectedRecipe() {
         return selectedRecipe;
     }
-}
 
+    public void insertRecipe(Recipe recipe) {
+        executorService.execute(() -> database.recipeDao().insert(recipe));
+    }
+}

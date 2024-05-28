@@ -4,9 +4,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Spinner;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -14,12 +11,15 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavOptions;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.bisque.R;
 import com.example.bisque.databinding.FragmentHomeBinding;
-import com.example.bisque.db.Recipe;
 import com.example.bisque.ui.recipe.RecipeViewModel;
+
+import java.util.Arrays;
+import java.util.List;
 
 public class HomeFragment extends Fragment {
 
@@ -54,26 +54,18 @@ public class HomeFragment extends Fragment {
         });
         recyclerView.setAdapter(homeAdapter);
 
-        // Setup category spinner
-        Spinner categorySpinner = binding.categorySpinner;
-        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(getContext(),
-                R.array.categories_array, android.R.layout.simple_spinner_item);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        categorySpinner.setAdapter(adapter);
-
-        // Load recipes based on selected category
-        categorySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                String selectedCategory = parent.getItemAtPosition(position).toString();
-                homeViewModel.loadRecipesByCategory(selectedCategory).observe(getViewLifecycleOwner(), homeAdapter::setRecipes);
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-                homeViewModel.getRecipes().observe(getViewLifecycleOwner(), homeAdapter::setRecipes);
-            }
+        // Setup category RecyclerView
+        RecyclerView categoryRecyclerView = binding.categoryRecyclerView;
+        categoryRecyclerView.setLayoutManager(new LinearLayoutManager(getContext(),
+                LinearLayoutManager.HORIZONTAL, false));
+        List<String> categories = Arrays.asList(getResources().getStringArray(R.array.categories_array));
+        CategoryAdapter categoryAdapter = new CategoryAdapter(categories, selectedCategory -> {
+            homeViewModel.loadRecipesByCategory(selectedCategory).observe(getViewLifecycleOwner(), homeAdapter::setRecipes);
         });
+        categoryRecyclerView.setAdapter(categoryAdapter);
+
+        // Load all recipes initially
+        homeViewModel.getRecipes().observe(getViewLifecycleOwner(), homeAdapter::setRecipes);
 
         return root;
     }
@@ -84,5 +76,3 @@ public class HomeFragment extends Fragment {
         binding = null;
     }
 }
-
-//
